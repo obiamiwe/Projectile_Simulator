@@ -1,0 +1,1544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BallistiX — Advanced Projectile Simulator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0c10;
+      --surface: #111318;
+      --surface2: #181c24;
+      --border: #1e2530;
+      --accent: #e8ff47;
+      --accent2: #47c2ff;
+      --accent3: #ff6b47;
+      --text: #e8ecf0;
+      --muted: #5a6478;
+      --font-display: 'Bebas Neue', sans-serif;
+      --font-mono: 'Space Mono', monospace;
+      --font-body: 'DM Sans', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── NOISE OVERLAY ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 9999; opacity: 0.4;
+    }
+
+    /* ── HEADER ── */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.2rem 2.5rem;
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10,12,16,0.92);
+      backdrop-filter: blur(12px);
+    }
+
+    .logo {
+      font-family: var(--font-display);
+      font-size: 2rem;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+    }
+
+    .logo span { color: var(--text); }
+
+    nav { display: flex; gap: 2rem; }
+
+    nav a {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-decoration: none;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+
+    nav a:hover { color: var(--accent); }
+
+    .badge {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      background: var(--accent);
+      color: #000;
+      padding: 0.2rem 0.6rem;
+      border-radius: 2px;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      min-height: 88vh;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .hero-left {
+      padding: 5rem 3rem 4rem 2.5rem;
+      display: flex; flex-direction: column; justify-content: center;
+      border-right: 1px solid var(--border);
+      position: relative;
+    }
+
+    .hero-left::after {
+      content: '';
+      position: absolute; bottom: 0; right: -1px;
+      width: 1px; height: 60%;
+      background: linear-gradient(to bottom, var(--accent), transparent);
+    }
+
+    .tag {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--accent);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-bottom: 1.5rem;
+    }
+
+    h1 {
+      font-family: var(--font-display);
+      font-size: clamp(4rem, 7vw, 7rem);
+      line-height: 0.92;
+      letter-spacing: 0.02em;
+      color: var(--text);
+      margin-bottom: 1.8rem;
+    }
+
+    h1 .highlight { color: var(--accent); }
+
+    .hero-desc {
+      font-size: 1rem;
+      color: var(--muted);
+      line-height: 1.7;
+      max-width: 38ch;
+      margin-bottom: 2.5rem;
+      font-weight: 300;
+    }
+
+    .cta-group { display: flex; gap: 1rem; flex-wrap: wrap; }
+
+    .btn-primary {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      padding: 0.85rem 2rem;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      font-weight: 700;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(232,255,71,0.25);
+    }
+
+    .btn-secondary {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 0.85rem 2rem;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+      text-decoration: none;
+      display: inline-flex; align-items: center; gap: 0.5rem;
+    }
+
+    .btn-secondary:hover { border-color: var(--accent2); color: var(--accent2); }
+
+    .stats-row {
+      display: flex; gap: 2.5rem;
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .stat-item { display: flex; flex-direction: column; gap: 0.2rem; }
+
+    .stat-num {
+      font-family: var(--font-display);
+      font-size: 2.2rem;
+      color: var(--accent);
+      line-height: 1;
+    }
+
+    .stat-label {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--muted);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    /* ── HERO CANVAS PANEL ── */
+    .hero-right {
+      display: flex; align-items: center; justify-content: center;
+      background: var(--surface);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-right::before {
+      content: '';
+      position: absolute;
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(232,255,71,0.04) 0%, transparent 70%);
+      top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+    }
+
+    #hero-canvas {
+      width: 100%; height: 100%;
+      display: block;
+    }
+
+    .canvas-label {
+      position: absolute;
+      bottom: 1.5rem; left: 1.5rem;
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    /* ── MAIN SIMULATOR ── */
+    .simulator-section {
+      padding: 4rem 2.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-header {
+      display: flex; align-items: baseline; gap: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 2.8rem;
+      letter-spacing: 0.05em;
+    }
+
+    .section-num {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+    }
+
+    .sim-grid {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 1.5rem;
+    }
+
+    /* ── CONTROL PANEL ── */
+    .control-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 1.5rem;
+      display: flex; flex-direction: column; gap: 1.2rem;
+    }
+
+    .panel-title {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--accent);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      padding-bottom: 0.8rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .control-group { display: flex; flex-direction: column; gap: 0.5rem; }
+
+    .control-label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+    }
+
+    .control-value {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 3px;
+      background: var(--border);
+      outline: none;
+      border-radius: 0;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px; height: 14px;
+      background: var(--accent);
+      cursor: pointer;
+      border-radius: 0;
+      transition: transform 0.15s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.3); }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin: 0.2rem 0;
+    }
+
+    .output-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.8rem;
+    }
+
+    .output-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 0.8rem;
+    }
+
+    .output-card-label {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 0.3rem;
+    }
+
+    .output-card-val {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      color: var(--accent2);
+      letter-spacing: 0.04em;
+    }
+
+    .output-card-unit {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--muted);
+    }
+
+    .run-btn {
+      width: 100%;
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      letter-spacing: 0.12em;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      padding: 0.9rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      margin-top: 0.5rem;
+    }
+
+    .run-btn:hover {
+      background: #fff;
+      box-shadow: 0 6px 20px rgba(232,255,71,0.3);
+    }
+
+    .run-btn:active { transform: scale(0.98); }
+
+    /* ── CHART AREA ── */
+    .chart-area {
+      display: flex; flex-direction: column; gap: 1.5rem;
+    }
+
+    .chart-tabs {
+      display: flex; gap: 0; border-bottom: 1px solid var(--border);
+    }
+
+    .tab-btn {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 0.7rem 1.4rem;
+      background: transparent;
+      color: var(--muted);
+      border: none;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      position: relative;
+      bottom: -1px;
+    }
+
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+
+    .tab-btn:hover:not(.active) { color: var(--text); }
+
+    .chart-container {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      padding: 1.2rem;
+      position: relative;
+    }
+
+    canvas.chart {
+      width: 100% !important;
+      display: block;
+    }
+
+    .chart-panel { display: none; }
+    .chart-panel.active { display: block; }
+
+    /* ── ANGLE SWEEP ── */
+    .sweep-section {
+      padding: 3rem 2.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sweep-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    /* ── PHYSICS INFO ── */
+    .physics-section {
+      padding: 4rem 2.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .equations-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: var(--border);
+      margin-top: 2rem;
+    }
+
+    .eq-card {
+      background: var(--surface);
+      padding: 2rem 1.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .eq-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0;
+      width: 3px; height: 100%;
+      background: var(--accent);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .eq-card:hover::before { opacity: 1; }
+
+    .eq-title {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 0.8rem;
+    }
+
+    .eq-formula {
+      font-family: var(--font-mono);
+      font-size: 0.9rem;
+      color: var(--accent2);
+      margin-bottom: 0.6rem;
+      line-height: 1.5;
+    }
+
+    .eq-desc {
+      font-size: 0.8rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      padding: 2rem 2.5rem;
+      display: flex; justify-content: space-between; align-items: center;
+      border-top: 1px solid var(--border);
+    }
+
+    .footer-left {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+    }
+
+    .footer-left span { color: var(--accent); }
+
+    .footer-right {
+      display: flex; gap: 1.5rem;
+    }
+
+    .footer-right a {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--muted);
+      text-decoration: none;
+      letter-spacing: 0.08em;
+      transition: color 0.2s;
+    }
+
+    .footer-right a:hover { color: var(--text); }
+
+    /* ── ANIMATION PANEL ── */
+    .anim-controls {
+      display: flex; gap: 0.8rem; align-items: center;
+      margin-top: 0.8rem;
+    }
+
+    .anim-btn {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 0.5rem 1.1rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .anim-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .anim-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
+
+    .speed-label {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--muted);
+    }
+
+    /* ── TOOLTIP ── */
+    .chart-tooltip {
+      position: absolute;
+      background: var(--surface2);
+      border: 1px solid var(--accent);
+      padding: 0.6rem 0.9rem;
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--text);
+      pointer-events: none;
+      display: none;
+      z-index: 10;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; }
+      .hero-right { min-height: 300px; }
+      .sim-grid { grid-template-columns: 1fr; }
+      .sweep-grid { grid-template-columns: 1fr; }
+      .equations-grid { grid-template-columns: 1fr; }
+      nav { display: none; }
+    }
+
+    /* ── SCROLL REVEAL ── */
+    .reveal {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: none;
+    }
+
+    /* ── CROSSHAIR CURSOR on charts ── */
+    .chart-wrapper { position: relative; cursor: crosshair; }
+
+    /* Scanline effect on hero canvas */
+    .hero-right::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.03) 2px,
+        rgba(0,0,0,0.03) 4px
+      );
+      pointer-events: none;
+    }
+
+    /* Number input style */
+    input[type="number"] {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      padding: 0.4rem 0.6rem;
+      width: 80px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="number"]:focus { border-color: var(--accent); }
+
+    select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      padding: 0.4rem 0.6rem;
+      outline: none;
+      cursor: pointer;
+    }
+
+    select:focus { border-color: var(--accent); }
+
+    .legend-dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      margin-right: 4px;
+    }
+
+    .legend {
+      display: flex; gap: 1.2rem; flex-wrap: wrap;
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      color: var(--muted);
+      margin-top: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">Ballisti<span>X</span></div>
+  <nav>
+    <a href="#simulator">Simulator</a>
+    <a href="#sweep">Angle Sweep</a>
+    <a href="#physics">Physics</a>
+    <a href="https://github.com" target="_blank">GitHub ↗</a>
+  </nav>
+  <span class="badge">v2.0</span>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-left">
+    <div class="tag">// Advanced Physics Engine</div>
+    <h1>PROJECTILE<br><span class="highlight">PHYSICS</span><br>SIMULATOR</h1>
+    <p class="hero-desc">
+      High-fidelity ballistic simulation with aerodynamic drag, wind resistance, and real-time visualization. Built on Newtonian mechanics with Euler integration.
+    </p>
+    <div class="cta-group">
+      <button class="btn-primary" onclick="document.getElementById('simulator').scrollIntoView({behavior:'smooth'})">Launch Simulator</button>
+      <a class="btn-secondary" href="https://github.com" target="_blank">
+        <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+        View Source
+      </a>
+    </div>
+    <div class="stats-row">
+      <div class="stat-item">
+        <span class="stat-num">6DOF</span>
+        <span class="stat-label">Physics Model</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-num">10ms</span>
+        <span class="stat-label">Time Step</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-num">EULER</span>
+        <span class="stat-label">Integration</span>
+      </div>
+    </div>
+  </div>
+  <div class="hero-right">
+    <canvas id="hero-canvas"></canvas>
+    <div class="canvas-label">// live trajectory preview</div>
+  </div>
+</section>
+
+<!-- SIMULATOR -->
+<section class="simulator-section" id="simulator">
+  <div class="section-header reveal">
+    <span class="section-num">01 —</span>
+    <h2 class="section-title">TRAJECTORY SIMULATOR</h2>
+  </div>
+
+  <div class="sim-grid reveal">
+    <!-- Control Panel -->
+    <div class="control-panel">
+      <div class="panel-title">// Parameters</div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>Initial Velocity</span>
+          <span class="control-value" id="v0-display">45 m/s</span>
+        </div>
+        <input type="range" id="v0" min="10" max="150" value="45" step="1" oninput="updateDisplay('v0','v0-display','m/s')" />
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>Launch Angle</span>
+          <span class="control-value" id="angle-display">40°</span>
+        </div>
+        <input type="range" id="angle" min="1" max="89" value="40" step="1" oninput="updateDisplay('angle','angle-display','°')" />
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>Launch Height</span>
+          <span class="control-value" id="h0-display">1.8 m</span>
+        </div>
+        <input type="range" id="h0" min="0" max="50" value="1.8" step="0.1" oninput="updateDisplay('h0','h0-display','m')" />
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>Mass</span>
+          <span class="control-value" id="mass-display">0.145 kg</span>
+        </div>
+        <input type="range" id="mass-r" min="0.01" max="5" value="0.145" step="0.005" oninput="updateDisplayF('mass-r','mass-display','kg')" />
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>Drag Coefficient (Cd)</span>
+          <span class="control-value" id="cd-display">0.47</span>
+        </div>
+        <input type="range" id="cd" min="0" max="2" value="0.47" step="0.01" oninput="updateDisplayF('cd','cd-display','')" />
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>Diameter</span>
+          <span class="control-value" id="diam-display">73 mm</span>
+        </div>
+        <input type="range" id="diam" min="10" max="500" value="73" step="1" oninput="updateDisplay('diam','diam-display','mm')" />
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>Wind X (horizontal)</span>
+          <span class="control-value" id="wx-display">0 m/s</span>
+        </div>
+        <input type="range" id="wx" min="-30" max="30" value="0" step="0.5" oninput="updateDisplay('wx','wx-display','m/s')" />
+      </div>
+
+      <div class="control-group">
+        <div class="control-label">
+          <span>Wind Y (vertical)</span>
+          <span class="control-value" id="wy-display">0 m/s</span>
+        </div>
+        <input type="range" id="wy" min="-30" max="30" value="0" step="0.5" oninput="updateDisplay('wy','wy-display','m/s')" />
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="control-group">
+        <div class="control-label"><span>Preset Object</span></div>
+        <select id="preset" onchange="applyPreset()">
+          <option value="">— Custom —</option>
+          <option value="baseball">Baseball</option>
+          <option value="soccer">Soccer Ball</option>
+          <option value="golf">Golf Ball</option>
+          <option value="cannonball">Cannonball</option>
+          <option value="shuttlecock">Shuttlecock</option>
+        </select>
+      </div>
+
+      <button class="run-btn" onclick="runSimulation()">▶ RUN SIMULATION</button>
+
+      <div class="output-grid" id="output-grid">
+        <div class="output-card">
+          <div class="output-card-label">Max Range</div>
+          <div class="output-card-val" id="out-range">—</div>
+          <div class="output-card-unit">meters</div>
+        </div>
+        <div class="output-card">
+          <div class="output-card-label">Max Height</div>
+          <div class="output-card-val" id="out-height">—</div>
+          <div class="output-card-unit">meters</div>
+        </div>
+        <div class="output-card">
+          <div class="output-card-label">Flight Time</div>
+          <div class="output-card-val" id="out-time">—</div>
+          <div class="output-card-unit">seconds</div>
+        </div>
+        <div class="output-card">
+          <div class="output-card-label">Impact Speed</div>
+          <div class="output-card-val" id="out-impact">—</div>
+          <div class="output-card-unit">m/s</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chart Area -->
+    <div class="chart-area">
+      <div class="chart-tabs">
+        <button class="tab-btn active" onclick="switchTab('trajectory', this)">Trajectory</button>
+        <button class="tab-btn" onclick="switchTab('velocity', this)">Velocity</button>
+        <button class="tab-btn" onclick="switchTab('animation', this)">Animation</button>
+        <button class="tab-btn" onclick="switchTab('energy', this)">Energy</button>
+      </div>
+
+      <!-- Trajectory -->
+      <div class="chart-panel active" id="panel-trajectory">
+        <div class="chart-container chart-wrapper">
+          <canvas class="chart" id="trajectory-chart" height="360"></canvas>
+          <div class="legend">
+            <span><span class="legend-dot" style="background:var(--accent)"></span>With Drag</span>
+            <span><span class="legend-dot" style="background:var(--muted)"></span>Ideal (no drag)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Velocity -->
+      <div class="chart-panel" id="panel-velocity">
+        <div class="chart-container chart-wrapper">
+          <canvas class="chart" id="velocity-chart" height="360"></canvas>
+          <div class="legend">
+            <span><span class="legend-dot" style="background:var(--accent)"></span>Total Speed</span>
+            <span><span class="legend-dot" style="background:var(--accent2)"></span>Vx</span>
+            <span><span class="legend-dot" style="background:var(--accent3)"></span>Vy</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Animation -->
+      <div class="chart-panel" id="panel-animation">
+        <div class="chart-container">
+          <canvas class="chart" id="anim-chart" height="360"></canvas>
+          <div class="anim-controls">
+            <button class="anim-btn active" id="play-btn" onclick="toggleAnim()">⏸ PAUSE</button>
+            <button class="anim-btn" onclick="resetAnim()">↺ RESET</button>
+            <span class="speed-label">Speed:</span>
+            <input type="range" id="anim-speed" min="1" max="10" value="3" style="width:100px" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Energy -->
+      <div class="chart-panel" id="panel-energy">
+        <div class="chart-container chart-wrapper">
+          <canvas class="chart" id="energy-chart" height="360"></canvas>
+          <div class="legend">
+            <span><span class="legend-dot" style="background:var(--accent)"></span>Kinetic Energy</span>
+            <span><span class="legend-dot" style="background:var(--accent2)"></span>Potential Energy</span>
+            <span><span class="legend-dot" style="background:var(--accent3)"></span>Total Energy</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ANGLE SWEEP -->
+<section class="sweep-section" id="sweep">
+  <div class="section-header reveal">
+    <span class="section-num">02 —</span>
+    <h2 class="section-title">ANGLE SWEEP ANALYSIS</h2>
+  </div>
+  <div class="sweep-grid reveal">
+    <div class="chart-container chart-wrapper">
+      <canvas class="chart" id="sweep-chart" height="300"></canvas>
+      <div class="legend" style="margin-top:0.8rem">
+        <span><span class="legend-dot" style="background:var(--accent)"></span>Range (drag)</span>
+        <span><span class="legend-dot" style="background:var(--muted)"></span>Range (ideal)</span>
+      </div>
+    </div>
+    <div>
+      <div class="chart-container" style="margin-bottom:1rem">
+        <canvas class="chart" id="maxheight-chart" height="300"></canvas>
+        <div class="legend" style="margin-top:0.8rem">
+          <span><span class="legend-dot" style="background:var(--accent3)"></span>Max Height vs Angle</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PHYSICS -->
+<section class="physics-section" id="physics">
+  <div class="section-header reveal">
+    <span class="section-num">03 —</span>
+    <h2 class="section-title">PHYSICS MODEL</h2>
+  </div>
+  <p style="color:var(--muted);font-size:0.9rem;max-width:60ch;margin-bottom:0;line-height:1.7;" class="reveal">
+    The simulator solves the equations of motion numerically using Euler integration with a 10ms timestep, accounting for gravity, aerodynamic drag, and user-defined wind conditions.
+  </p>
+  <div class="equations-grid reveal">
+    <div class="eq-card">
+      <div class="eq-title">Drag Force</div>
+      <div class="eq-formula">F_d = ½ ρ C_d A v_rel²</div>
+      <div class="eq-desc">Aerodynamic drag force proportional to the square of relative velocity. ρ is air density (1.225 kg/m³), C_d is drag coefficient, A is cross-sectional area.</div>
+    </div>
+    <div class="eq-card">
+      <div class="eq-title">Equations of Motion</div>
+      <div class="eq-formula">aₓ = F_dx / m<br>aᵧ = F_dy / m − g</div>
+      <div class="eq-desc">Net acceleration from drag components and gravitational acceleration (g = 9.81 m/s²). Forces resolved along each axis from the drag direction vector.</div>
+    </div>
+    <div class="eq-card">
+      <div class="eq-title">Euler Integration</div>
+      <div class="eq-formula">vₙ₊₁ = vₙ + aₙ·Δt<br>xₙ₊₁ = xₙ + vₙ·Δt</div>
+      <div class="eq-desc">Velocity and position updated each timestep Δt = 0.01 s. Simulation terminates when y ≤ 0 (ground impact).</div>
+    </div>
+    <div class="eq-card">
+      <div class="eq-title">Relative Velocity</div>
+      <div class="eq-formula">v_rel = v − v_wind</div>
+      <div class="eq-desc">Drag depends on velocity relative to the surrounding air mass. Wind vector subtracted component-wise before computing drag magnitude and direction.</div>
+    </div>
+    <div class="eq-card">
+      <div class="eq-title">Kinetic Energy</div>
+      <div class="eq-formula">KE = ½ m v²</div>
+      <div class="eq-desc">Energy carried by the projectile due to motion. Lost continuously to drag (heat). Displayed in real-time in the Energy tab alongside potential energy.</div>
+    </div>
+    <div class="eq-card">
+      <div class="eq-title">Initial Conditions</div>
+      <div class="eq-formula">vₓ = v₀ cos(θ)<br>vᵧ = v₀ sin(θ)</div>
+      <div class="eq-desc">Launch velocity decomposed into horizontal and vertical components from initial speed v₀ and angle θ measured from the horizontal.</div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-left">
+    BallistiX <span>v2.0</span> — Advanced Projectile Physics Simulator
+  </div>
+  <div class="footer-right">
+    <a href="https://github.com" target="_blank">GitHub</a>
+    <a href="#physics">Physics</a>
+    <a href="#simulator">Simulator</a>
+  </div>
+</footer>
+
+<script>
+// ═══════════════════════════════════════════════
+//  PHYSICS ENGINE
+// ═══════════════════════════════════════════════
+const G = 9.81;
+const RHO = 1.225;
+const DT = 0.01;
+
+function simulate(v0, angleDeg, h0, mass, cd, diamMm, windX, windY) {
+  const theta = angleDeg * Math.PI / 180;
+  let vx = v0 * Math.cos(theta);
+  let vy = v0 * Math.sin(theta);
+  const diam = diamMm / 1000;
+  const A = Math.PI * (diam / 2) ** 2;
+
+  let x = 0, y = h0, t = 0;
+  const xs = [], ys = [], ts = [], vxs = [], vys = [], vs = [];
+
+  while (y >= 0 && t < 300) {
+    xs.push(x); ys.push(y); ts.push(t);
+    vxs.push(vx); vys.push(vy);
+    vs.push(Math.sqrt(vx * vx + vy * vy));
+
+    const vrx = vx - windX;
+    const vry = vy - windY;
+    const vrel = Math.sqrt(vrx * vrx + vry * vry);
+    const Fd = 0.5 * RHO * cd * A * vrel * vrel;
+
+    let Fdx = 0, Fdy = 0;
+    if (vrel > 0) { Fdx = -Fd * vrx / vrel; Fdy = -Fd * vry / vrel; }
+
+    const ax = Fdx / mass;
+    const ay = (Fdy / mass) - G;
+
+    vx += ax * DT;
+    vy += ay * DT;
+    x += vx * DT;
+    y += vy * DT;
+    t += DT;
+  }
+
+  return { xs, ys, ts, vxs, vys, vs };
+}
+
+function simulateIdeal(v0, angleDeg, h0) {
+  const theta = angleDeg * Math.PI / 180;
+  let vx = v0 * Math.cos(theta);
+  let vy = v0 * Math.sin(theta);
+  let x = 0, y = h0;
+  const xs = [], ys = [];
+
+  let safeT = 0;
+  while (y >= 0 && safeT < 300) {
+    xs.push(x); ys.push(y);
+    vy -= G * DT;
+    x += vx * DT;
+    y += vy * DT;
+    safeT += DT;
+  }
+  return { xs, ys };
+}
+
+// ═══════════════════════════════════════════════
+//  PRESETS
+// ═══════════════════════════════════════════════
+const PRESETS = {
+  baseball:   { mass: 0.145, cd: 0.47, diam: 73 },
+  soccer:     { mass: 0.43,  cd: 0.25, diam: 220 },
+  golf:       { mass: 0.046, cd: 0.24, diam: 43 },
+  cannonball: { mass: 4.0,   cd: 0.47, diam: 120 },
+  shuttlecock:{ mass: 0.005, cd: 0.6,  diam: 58 }
+};
+
+function applyPreset() {
+  const val = document.getElementById('preset').value;
+  if (!val) return;
+  const p = PRESETS[val];
+  setSlider('mass-r', p.mass); updateDisplayF('mass-r','mass-display','kg');
+  setSlider('cd', p.cd); updateDisplayF('cd','cd-display','');
+  setSlider('diam', p.diam); updateDisplay('diam','diam-display','mm');
+  runSimulation();
+}
+
+function setSlider(id, val) { document.getElementById(id).value = val; }
+
+// ═══════════════════════════════════════════════
+//  DISPLAY HELPERS
+// ═══════════════════════════════════════════════
+function updateDisplay(id, dispId, unit) {
+  const v = document.getElementById(id).value;
+  document.getElementById(dispId).textContent = v + ' ' + unit;
+}
+
+function updateDisplayF(id, dispId, unit) {
+  const v = parseFloat(document.getElementById(id).value);
+  document.getElementById(dispId).textContent = v.toFixed(3) + (unit ? ' ' + unit : '');
+}
+
+// ═══════════════════════════════════════════════
+//  CHART RENDERING
+// ═══════════════════════════════════════════════
+function getParams() {
+  return {
+    v0:    parseFloat(document.getElementById('v0').value),
+    angle: parseFloat(document.getElementById('angle').value),
+    h0:    parseFloat(document.getElementById('h0').value),
+    mass:  parseFloat(document.getElementById('mass-r').value),
+    cd:    parseFloat(document.getElementById('cd').value),
+    diam:  parseFloat(document.getElementById('diam').value),
+    wx:    parseFloat(document.getElementById('wx').value),
+    wy:    parseFloat(document.getElementById('wy').value)
+  };
+}
+
+let currentData = null;
+
+function runSimulation() {
+  const p = getParams();
+  const data = simulate(p.v0, p.angle, p.h0, p.mass, p.cd, p.diam, p.wx, p.wy);
+  const ideal = simulateIdeal(p.v0, p.angle, p.h0);
+  currentData = { data, ideal, p };
+
+  // Outputs
+  const range = data.xs[data.xs.length - 1];
+  const maxH = Math.max(...data.ys);
+  const flightT = data.ts[data.ts.length - 1];
+  const impactV = data.vs[data.vs.length - 1];
+
+  document.getElementById('out-range').textContent = range.toFixed(1);
+  document.getElementById('out-height').textContent = maxH.toFixed(1);
+  document.getElementById('out-time').textContent = flightT.toFixed(2);
+  document.getElementById('out-impact').textContent = impactV.toFixed(1);
+
+  drawTrajectory(data, ideal);
+  drawVelocity(data);
+  drawEnergy(data, p.mass);
+  drawSweep(p);
+  resetAnim();
+}
+
+function drawTrajectory(data, ideal) {
+  const canvas = document.getElementById('trajectory-chart');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth * devicePixelRatio;
+  canvas.height = canvas.offsetHeight * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  const W = canvas.offsetWidth, H = canvas.offsetHeight;
+  const PAD = { t:20, r:20, b:40, l:55 };
+
+  ctx.clearRect(0, 0, W, H);
+  drawGrid(ctx, W, H, PAD);
+
+  const maxX = Math.max(Math.max(...data.xs), Math.max(...ideal.xs)) * 1.05;
+  const maxY = Math.max(Math.max(...data.ys), Math.max(...ideal.ys)) * 1.2;
+
+  const cx = x => PAD.l + (x / maxX) * (W - PAD.l - PAD.r);
+  const cy = y => H - PAD.b - (y / maxY) * (H - PAD.t - PAD.b);
+
+  // Ideal
+  ctx.beginPath();
+  ctx.strokeStyle = 'rgba(90,100,120,0.5)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 4]);
+  ideal.xs.forEach((x, i) => i === 0 ? ctx.moveTo(cx(x), cy(ideal.ys[i])) : ctx.lineTo(cx(x), cy(ideal.ys[i])));
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Drag
+  ctx.beginPath();
+  ctx.strokeStyle = '#e8ff47';
+  ctx.lineWidth = 2.5;
+  data.xs.forEach((x, i) => i === 0 ? ctx.moveTo(cx(x), cy(data.ys[i])) : ctx.lineTo(cx(x), cy(data.ys[i])));
+  ctx.stroke();
+
+  // Glow
+  ctx.beginPath();
+  ctx.strokeStyle = 'rgba(232,255,71,0.12)';
+  ctx.lineWidth = 8;
+  data.xs.forEach((x, i) => i === 0 ? ctx.moveTo(cx(x), cy(data.ys[i])) : ctx.lineTo(cx(x), cy(data.ys[i])));
+  ctx.stroke();
+
+  drawAxes(ctx, W, H, PAD, maxX, maxY, 'm', 'm');
+}
+
+function drawVelocity(data) {
+  const canvas = document.getElementById('velocity-chart');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth * devicePixelRatio;
+  canvas.height = canvas.offsetHeight * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  const W = canvas.offsetWidth, H = canvas.offsetHeight;
+  const PAD = { t:20, r:20, b:40, l:55 };
+
+  ctx.clearRect(0, 0, W, H);
+  drawGrid(ctx, W, H, PAD);
+
+  const maxT = data.ts[data.ts.length - 1];
+  const maxV = Math.max(...data.vs) * 1.1;
+
+  const cx = t => PAD.l + (t / maxT) * (W - PAD.l - PAD.r);
+  const cy = v => H - PAD.b - (v / maxV) * (H - PAD.t - PAD.b);
+
+  const drawLine = (series, color) => {
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    series.forEach((v, i) => {
+      const tx = cx(data.ts[i]);
+      const vy = cy(v);
+      i === 0 ? ctx.moveTo(tx, vy) : ctx.lineTo(tx, vy);
+    });
+    ctx.stroke();
+  };
+
+  drawLine(data.vs, '#e8ff47');
+  drawLine(data.vxs.map(Math.abs), '#47c2ff');
+  drawLine(data.vys, '#ff6b47');
+
+  drawAxes(ctx, W, H, PAD, maxT, maxV, 's', 'm/s');
+}
+
+function drawEnergy(data, mass) {
+  const canvas = document.getElementById('energy-chart');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth * devicePixelRatio;
+  canvas.height = canvas.offsetHeight * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  const W = canvas.offsetWidth, H = canvas.offsetHeight;
+  const PAD = { t:20, r:20, b:40, l:60 };
+
+  ctx.clearRect(0, 0, W, H);
+  drawGrid(ctx, W, H, PAD);
+
+  const KE = data.vs.map(v => 0.5 * mass * v * v);
+  const PE = data.ys.map(y => mass * G * y);
+  const TE = KE.map((k, i) => k + PE[i]);
+  const maxE = Math.max(...TE) * 1.1;
+  const maxT = data.ts[data.ts.length - 1];
+
+  const cx = t => PAD.l + (t / maxT) * (W - PAD.l - PAD.r);
+  const cy = e => H - PAD.b - (e / maxE) * (H - PAD.t - PAD.b);
+
+  [[KE,'#e8ff47'], [PE,'#47c2ff'], [TE,'#ff6b47']].forEach(([series, color]) => {
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    series.forEach((e, i) => {
+      const tx = cx(data.ts[i]);
+      const ey = cy(e);
+      i === 0 ? ctx.moveTo(tx, ey) : ctx.lineTo(tx, ey);
+    });
+    ctx.stroke();
+  });
+
+  drawAxes(ctx, W, H, PAD, maxT, maxE, 's', 'J');
+}
+
+function drawSweep(p) {
+  const angles = [];
+  const ranges = [], ideal_ranges = [], heights = [];
+
+  for (let a = 1; a <= 89; a += 1.5) {
+    angles.push(a);
+    const d = simulate(p.v0, a, p.h0, p.mass, p.cd, p.diam, p.wx, p.wy);
+    ranges.push(d.xs[d.xs.length - 1]);
+    heights.push(Math.max(...d.ys));
+    const id = simulateIdeal(p.v0, a, p.h0);
+    ideal_ranges.push(id.xs[id.xs.length - 1]);
+  }
+
+  drawSweepChart(angles, ranges, ideal_ranges);
+  drawHeightChart(angles, heights);
+}
+
+function drawSweepChart(angles, ranges, ideal) {
+  const canvas = document.getElementById('sweep-chart');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth * devicePixelRatio;
+  canvas.height = canvas.offsetHeight * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  const W = canvas.offsetWidth, H = canvas.offsetHeight;
+  const PAD = { t:20, r:20, b:40, l:60 };
+
+  ctx.clearRect(0, 0, W, H);
+  drawGrid(ctx, W, H, PAD);
+
+  const maxA = 90, maxR = Math.max(...ideal) * 1.1;
+  const cx = a => PAD.l + (a / maxA) * (W - PAD.l - PAD.r);
+  const cy = r => H - PAD.b - (r / maxR) * (H - PAD.t - PAD.b);
+
+  // ideal
+  ctx.beginPath(); ctx.strokeStyle = 'rgba(90,100,120,0.5)'; ctx.lineWidth = 1.5; ctx.setLineDash([4,4]);
+  ideal.forEach((r, i) => i === 0 ? ctx.moveTo(cx(angles[i]), cy(r)) : ctx.lineTo(cx(angles[i]), cy(r)));
+  ctx.stroke(); ctx.setLineDash([]);
+
+  // drag
+  ctx.beginPath(); ctx.strokeStyle = '#e8ff47'; ctx.lineWidth = 2.5;
+  ranges.forEach((r, i) => i === 0 ? ctx.moveTo(cx(angles[i]), cy(r)) : ctx.lineTo(cx(angles[i]), cy(r)));
+  ctx.stroke();
+
+  // optimal angle marker
+  const optIdx = ranges.indexOf(Math.max(...ranges));
+  const optA = angles[optIdx];
+  ctx.beginPath(); ctx.strokeStyle = '#ff6b47'; ctx.lineWidth = 1; ctx.setLineDash([3,3]);
+  ctx.moveTo(cx(optA), PAD.t); ctx.lineTo(cx(optA), H - PAD.b);
+  ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle = '#ff6b47'; ctx.font = `700 10px 'Space Mono'`;
+  ctx.fillText(`OPT: ${optA.toFixed(1)}°`, cx(optA) + 5, PAD.t + 14);
+
+  drawAxes(ctx, W, H, PAD, 90, maxR, '°', 'm');
+}
+
+function drawHeightChart(angles, heights) {
+  const canvas = document.getElementById('maxheight-chart');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth * devicePixelRatio;
+  canvas.height = canvas.offsetHeight * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  const W = canvas.offsetWidth, H = canvas.offsetHeight;
+  const PAD = { t:20, r:20, b:40, l:60 };
+
+  ctx.clearRect(0, 0, W, H);
+  drawGrid(ctx, W, H, PAD);
+
+  const maxA = 90, maxH = Math.max(...heights) * 1.1;
+  const cx = a => PAD.l + (a / maxA) * (W - PAD.l - PAD.r);
+  const cy = h => H - PAD.b - (h / maxH) * (H - PAD.t - PAD.b);
+
+  ctx.beginPath(); ctx.strokeStyle = '#ff6b47'; ctx.lineWidth = 2.5;
+  heights.forEach((h, i) => i === 0 ? ctx.moveTo(cx(angles[i]), cy(h)) : ctx.lineTo(cx(angles[i]), cy(h)));
+  ctx.stroke();
+
+  drawAxes(ctx, W, H, PAD, 90, maxH, '°', 'm');
+}
+
+// ── SHARED CANVAS DRAWING HELPERS ──
+function drawGrid(ctx, W, H, PAD) {
+  ctx.strokeStyle = 'rgba(30,37,48,0.8)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 5; i++) {
+    const y = PAD.t + i * (H - PAD.t - PAD.b) / 5;
+    ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W - PAD.r, y); ctx.stroke();
+  }
+  for (let i = 0; i <= 6; i++) {
+    const x = PAD.l + i * (W - PAD.l - PAD.r) / 6;
+    ctx.beginPath(); ctx.moveTo(x, PAD.t); ctx.lineTo(x, H - PAD.b); ctx.stroke();
+  }
+}
+
+function drawAxes(ctx, W, H, PAD, maxX, maxY, xUnit, yUnit) {
+  ctx.strokeStyle = '#1e2530'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(PAD.l, PAD.t); ctx.lineTo(PAD.l, H - PAD.b); ctx.lineTo(W - PAD.r, H - PAD.b); ctx.stroke();
+
+  ctx.fillStyle = '#5a6478'; ctx.font = `9px 'Space Mono'`;
+  for (let i = 0; i <= 6; i++) {
+    const xVal = (maxX * i / 6).toFixed(maxX > 100 ? 0 : 1);
+    const px = PAD.l + i * (W - PAD.l - PAD.r) / 6;
+    ctx.fillText(xVal + xUnit, px - 12, H - PAD.b + 14);
+  }
+  for (let i = 0; i <= 5; i++) {
+    const yVal = (maxY * (5 - i) / 5).toFixed(maxY > 100 ? 0 : 1);
+    const py = PAD.t + i * (H - PAD.t - PAD.b) / 5;
+    ctx.fillText(yVal + yUnit, 2, py + 4);
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  ANIMATION
+// ═══════════════════════════════════════════════
+let animFrame = 0, animRunning = true, animTimer = null;
+
+function drawAnimFrame() {
+  if (!currentData) return;
+  const { data } = currentData;
+  const canvas = document.getElementById('anim-chart');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth * devicePixelRatio;
+  canvas.height = canvas.offsetHeight * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  const W = canvas.offsetWidth, H = canvas.offsetHeight;
+  const PAD = { t:20, r:20, b:40, l:55 };
+
+  const maxX = Math.max(...data.xs) * 1.1;
+  const maxY = Math.max(...data.ys) * 1.25;
+  const cx = x => PAD.l + (x / maxX) * (W - PAD.l - PAD.r);
+  const cy = y => H - PAD.b - (y / maxY) * (H - PAD.t - PAD.b);
+
+  ctx.clearRect(0, 0, W, H);
+  drawGrid(ctx, W, H, PAD);
+  drawAxes(ctx, W, H, PAD, maxX, maxY, 'm', 'm');
+
+  const n = Math.min(animFrame, data.xs.length - 1);
+
+  // Trail
+  ctx.beginPath();
+  ctx.strokeStyle = 'rgba(232,255,71,0.25)';
+  ctx.lineWidth = 1.5;
+  for (let i = 0; i <= n; i++) i === 0 ? ctx.moveTo(cx(data.xs[i]), cy(data.ys[i])) : ctx.lineTo(cx(data.xs[i]), cy(data.ys[i]));
+  ctx.stroke();
+
+  // Glow trail
+  ctx.beginPath();
+  const trailStart = Math.max(0, n - 40);
+  ctx.strokeStyle = 'rgba(232,255,71,0.6)';
+  ctx.lineWidth = 3;
+  for (let i = trailStart; i <= n; i++) i === trailStart ? ctx.moveTo(cx(data.xs[i]), cy(data.ys[i])) : ctx.lineTo(cx(data.xs[i]), cy(data.ys[i]));
+  ctx.stroke();
+
+  // Projectile
+  const px = cx(data.xs[n]);
+  const py = cy(data.ys[n]);
+  const gradient = ctx.createRadialGradient(px, py, 0, px, py, 14);
+  gradient.addColorStop(0, 'rgba(232,255,71,0.4)');
+  gradient.addColorStop(1, 'transparent');
+  ctx.beginPath(); ctx.arc(px, py, 14, 0, Math.PI * 2);
+  ctx.fillStyle = gradient; ctx.fill();
+
+  ctx.beginPath(); ctx.arc(px, py, 5, 0, Math.PI * 2);
+  ctx.fillStyle = '#e8ff47'; ctx.fill();
+
+  // Stats overlay
+  ctx.fillStyle = 'rgba(232,255,71,0.8)';
+  ctx.font = `700 10px 'Space Mono'`;
+  const spd = data.vs[n];
+  const alt = data.ys[n];
+  ctx.fillText(`v: ${spd.toFixed(1)} m/s  |  h: ${alt.toFixed(1)} m  |  x: ${data.xs[n].toFixed(1)} m`, PAD.l, PAD.t + 14);
+}
+
+function startAnimLoop() {
+  if (animTimer) clearInterval(animTimer);
+  const speed = parseInt(document.getElementById('anim-speed').value);
+  animTimer = setInterval(() => {
+    if (!animRunning || !currentData) return;
+    animFrame += speed;
+    if (animFrame >= currentData.data.xs.length) { animFrame = currentData.data.xs.length - 1; animRunning = false; document.getElementById('play-btn').textContent = '▶ PLAY'; document.getElementById('play-btn').classList.remove('active'); }
+    drawAnimFrame();
+  }, 16);
+}
+
+function toggleAnim() {
+  animRunning = !animRunning;
+  const btn = document.getElementById('play-btn');
+  btn.textContent = animRunning ? '⏸ PAUSE' : '▶ PLAY';
+  btn.classList.toggle('active', animRunning);
+}
+
+function resetAnim() {
+  animFrame = 0;
+  animRunning = true;
+  const btn = document.getElementById('play-btn');
+  btn.textContent = '⏸ PAUSE';
+  btn.classList.add('active');
+  drawAnimFrame();
+  startAnimLoop();
+}
+
+document.getElementById('anim-speed').addEventListener('input', startAnimLoop);
+
+// ═══════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════
+function switchTab(name, btn) {
+  document.querySelectorAll('.chart-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'animation') { resetAnim(); }
+  else if (currentData) {
+    setTimeout(() => {
+      if (name === 'trajectory') drawTrajectory(currentData.data, currentData.ideal);
+      if (name === 'velocity') drawVelocity(currentData.data);
+      if (name === 'energy') drawEnergy(currentData.data, currentData.p.mass);
+    }, 50);
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  HERO CANVAS — live animated preview
+// ═══════════════════════════════════════════════
+function heroCanvas() {
+  const canvas = document.getElementById('hero-canvas');
+  const ctx = canvas.getContext('2d');
+
+  function resize() {
+    canvas.width = canvas.offsetWidth * devicePixelRatio;
+    canvas.height = canvas.offsetHeight * devicePixelRatio;
+    ctx.scale(devicePixelRatio, devicePixelRatio);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const trajectories = [
+    simulate(40, 35, 1.8, 0.145, 0.47, 73, 0, 0),
+    simulate(55, 45, 1.8, 0.145, 0.3, 100, 2, 0),
+    simulate(30, 55, 2.0, 0.43,  0.25, 220, -1, 0),
+  ];
+  const colors = ['#e8ff47', '#47c2ff', '#ff6b47'];
+  let heads = [0, 0, 0];
+  const speeds = [2, 3, 1.5];
+
+  function draw() {
+    const W = canvas.offsetWidth, H = canvas.offsetHeight;
+    ctx.clearRect(0, 0, W, H);
+
+    trajectories.forEach((traj, ti) => {
+      const maxX = Math.max(...traj.xs) * 1.1;
+      const maxY = Math.max(...traj.ys) * 1.3;
+      const cx = x => (x / maxX) * W;
+      const cy = y => H - (y / maxY) * H * 0.9;
+      const color = colors[ti];
+      const n = heads[ti];
+
+      // Full faded path
+      ctx.beginPath();
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = 0.08;
+      ctx.lineWidth = 1;
+      traj.xs.forEach((x, i) => i === 0 ? ctx.moveTo(cx(x), cy(traj.ys[i])) : ctx.lineTo(cx(x), cy(traj.ys[i])));
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+
+      // Active trail
+      const start = Math.max(0, n - 60);
+      ctx.beginPath();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1.5;
+      ctx.globalAlpha = 0.7;
+      for (let i = start; i <= Math.min(n, traj.xs.length - 1); i++) {
+        i === start ? ctx.moveTo(cx(traj.xs[i]), cy(traj.ys[i])) : ctx.lineTo(cx(traj.xs[i]), cy(traj.ys[i]));
+      }
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+
+      // Head
+      if (n < traj.xs.length) {
+        const px = cx(traj.xs[n]);
+        const py = cy(traj.ys[n]);
+        const grd = ctx.createRadialGradient(px, py, 0, px, py, 10);
+        grd.addColorStop(0, color + 'aa');
+        grd.addColorStop(1, 'transparent');
+        ctx.beginPath(); ctx.arc(px, py, 10, 0, Math.PI * 2);
+        ctx.fillStyle = grd; ctx.fill();
+        ctx.beginPath(); ctx.arc(px, py, 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = color; ctx.fill();
+      }
+
+      heads[ti] += speeds[ti];
+      if (heads[ti] >= traj.xs.length) heads[ti] = 0;
+    });
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+// ═══════════════════════════════════════════════
+//  SCROLL REVEAL
+// ═══════════════════════════════════════════════
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); } });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+window.addEventListener('load', () => {
+  heroCanvas();
+  runSimulation();
+});
+
+window.addEventListener('resize', () => {
+  if (currentData) {
+    drawTrajectory(currentData.data, currentData.ideal);
+    drawVelocity(currentData.data);
+    drawEnergy(currentData.data, currentData.p.mass);
+    drawSweep(currentData.p);
+  }
+});
+</script>
+</body>
+</html>
